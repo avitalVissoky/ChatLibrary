@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bubble_self">#4CAF50</color>
+    <color name="bubble_other">#E0E0E0</color>
+    <color name="text_self">#FFFFFF</color>
+    <color name="text_other">#212121</color>
+    <color name="chat_background">#FAFAFA</color>
+
+</resources>
