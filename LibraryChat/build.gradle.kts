@@ -30,7 +30,7 @@ android {
 }
 
 group = "com.github.avitaliskhakov"
-version = "1.0.0"
+version = "1.0.1"
 
 dependencies {
 
@@ -53,7 +53,7 @@ afterEvaluate {
         publications {
             create<MavenPublication>("release") {
                 groupId = project.group.toString()
-                artifactId = "LibratyChat"
+                artifactId = "ChatLibrary"
                 version = project.version.toString()
 
                 artifact(tasks.getByName("bundleReleaseAar"))
