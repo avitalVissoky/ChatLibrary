@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.chatdemo"
+    namespace = "com.avitaliskhakov.chatdemo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.chatdemo"
+        applicationId = "com.avitaliskhakov.chatdemo"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
