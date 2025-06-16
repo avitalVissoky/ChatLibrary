@@ -217,6 +217,14 @@ public void messageSent(Map<String, Message> response) {
 - Java 11+
 - Internet connection for real-time features
 
+## 🎥 Video
+
+Check out the Chat SDK in action:
+
+https://github.com/user-attachments/assets/bfcc0e0e-dfa6-4ad5-bd67-551cec685d58
+
+
+
 ## Dependencies
 
 The SDK automatically includes:
