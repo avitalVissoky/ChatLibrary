@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
                 ContextCompat.getColor(this, R.color.text_self),
                 ContextCompat.getColor(this, R.color.text_other),
                 ContextCompat.getColor(this, R.color.chat_background),
-                ContextCompat.getColor(this, R.color.bubble_self) // same color as bubble_self for compatability
+                ContextCompat.getColor(this, R.color.accent)
         );
         ChatConfig.setStyle(style);
         ChatConfig.setChatEventsListener(new ChatEventsListener() {

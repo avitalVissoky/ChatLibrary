@@ -5,9 +5,8 @@ public class Message {
     private String chatRoomId;
     private String senderId;
     private Content content;
-    private boolean edited;	// true only if content has changed
-    private String createdAt;	//UTC String- if not edited -> equals to content.created at.
-
+    private boolean edited;
+    private String createdAt;
 
     public Message() {}
 

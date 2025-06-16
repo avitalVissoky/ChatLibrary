@@ -24,7 +24,7 @@
             </intent-filter>
 
         </activity>
-        <activity android:name="com.example.librarychat.ui.ChatRoomActivity" />
+        <activity android:name="com.avitaliskhakov.librarychat.ui.ChatRoomActivity" />
 
         <!--        <activity-->
 <!--            android:name=".ChatDemoActivity"-->

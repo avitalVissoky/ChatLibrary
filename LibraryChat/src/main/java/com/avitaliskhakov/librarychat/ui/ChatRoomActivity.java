@@ -27,6 +27,8 @@ import com.avitaliskhakov.librarychat.model.ChatRoomInfo;
 import com.avitaliskhakov.librarychat.model.Content;
 import com.avitaliskhakov.librarychat.model.Icontent;
 import com.avitaliskhakov.librarychat.model.Message;
+import com.avitaliskhakov.multistateviewx.MultiStateView;
+import com.avitaliskhakov.multistateviewx.State;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
     private TextView typingText;
     private View typingContainer;
     private MaterialButton sendBtn;
+    private MultiStateView multiStateView;
 
     private MessageAdapter messageAdapter;
     private final List<Message> messages = new ArrayList<>();
@@ -54,6 +57,7 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
     private boolean isLoading = false;
     private String lastCreatedAt = null;
     private final int PAGE_SIZE = 10;
+    private boolean isFirstLoad = true;
 
     private final Handler typingStatusHandler = new Handler();
     private final int TYPING_STATUS_INTERVAL = 700;
@@ -68,11 +72,15 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_chat_demo);
+        setContentView(R.layout.activity_chat_demo_with_state);
 
         initView();
         initChat();
         initListeners();
+        setupMultiStateView();
+
+        multiStateView.setState(State.LOADING);
+
         typingStatusHandler.post(typingStatusRunnable);
         fetchMessages(true);
     }
@@ -83,11 +91,22 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
         typingText = findViewById(R.id.typingIndicator);
         typingContainer = findViewById(R.id.typingIndicatorContainer);
         sendBtn = findViewById(R.id.sendBtn);
+        multiStateView = findViewById(R.id.multiStateView);
 
         ChatStyle style = ChatConfig.getStyle();
         if (style != null) {
             sendBtn.setBackgroundTintList(ColorStateList.valueOf(style.sendButtonColor));
         }
+    }
+
+    private void setupMultiStateView() {
+        multiStateView.setCustomLayout(State.EMPTY, R.layout.layout_chat_empty_state);
+        multiStateView.setCustomLayout(State.ERROR, R.layout.layout_chat_error_state);
+        multiStateView.setCustomLayout(State.LOADING, R.layout.layout_chat_loading_state);
+        multiStateView.setOnRetryClickListener(v -> {
+            multiStateView.setState(State.LOADING);
+            fetchMessages(isFirstLoad);
+        });
     }
 
     private void initChat() {
@@ -96,8 +115,8 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
         chatRoomId = intent.getStringExtra("CHAT_ROOM_ID");
 
         if (senderId == null || chatRoomId == null) {
-            Toast.makeText(this, "Missing USER_ID or CHAT_ROOM_ID", Toast.LENGTH_SHORT).show();
-            finish();
+            multiStateView.setState(State.ERROR);
+            Toast.makeText(this, "Missing USER_ID or CHAT_ROOM_ID", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -112,18 +131,53 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
 
     private ChatController.CallBack_Chat createChatCallback() {
         return new ChatController.CallBack_Chat() {
-            @Override public void success(List<Message> newMessages) { handleNewMessages(newMessages); }
-            @Override public void messageSent(Map<String, Message> response) { handleMessageSent(response); }
-            @Override public void messageDeleted(Map<String, String> response) { handleMessageDeleted(response); }
-            @Override public void messageUpdated(Map<String, Message> response) { handleMessageUpdated(response); }
-            @Override public void typingStatusUpdated(Map<String, Boolean> typingUsers) { updateTypingIndicator(typingUsers); }
-            @Override public void chatRoomCreated(Map<String, String> response) {}
-            @Override public void userChatRoomsFetched(List<ChatRoomInfo> chatRooms) {}
-            @Override public void participantsFetched(List<String> participants) {}
+            @Override
+            public void success(List<Message> newMessages) {
+                handleNewMessages(newMessages);
+            }
+
+            @Override
+            public void messageSent(Map<String, Message> response) {
+                handleMessageSent(response);
+            }
+
+            @Override
+            public void messageDeleted(Map<String, String> response) {
+                handleMessageDeleted(response);
+            }
+
+            @Override
+            public void messageUpdated(Map<String, Message> response) {
+                handleMessageUpdated(response);
+            }
+
+            @Override
+            public void typingStatusUpdated(Map<String, Boolean> typingUsers) {
+                updateTypingIndicator(typingUsers);
+            }
+
+            @Override
+            public void chatRoomCreated(Map<String, String> response) {}
+
+            @Override
+            public void userChatRoomsFetched(List<ChatRoomInfo> chatRooms) {}
+
+            @Override
+            public void participantsFetched(List<String> participants) {}
+
             @Override
             public void error(String error) {
                 Log.e("ChatRoomActivity", "ERROR SDK: " + error);
                 isLoading = false;
+                runOnUiThread(() -> {
+                    if (error.contains("timeout") && messages.isEmpty()) {
+                        multiStateView.setState(State.EMPTY);
+                    } else if (messages.isEmpty() && isFirstLoad) {
+                        multiStateView.setState(State.ERROR);
+                    } else {
+                        Toast.makeText(ChatRoomActivity.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         };
     }
@@ -174,32 +228,60 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
     }
 
     private void handleNewMessages(List<Message> newMessages) {
-        if (!newMessages.isEmpty()) {
-            List<Message> filtered = new ArrayList<>();
-            for (Message m : newMessages) {
-                if (!loadedMessageIds.contains(m.getId())) {
-                    filtered.add(m);
-                    loadedMessageIds.add(m.getId());
+        runOnUiThread(() -> {
+            if (newMessages.isEmpty() && messages.isEmpty()) {
+                // No messages at all - show empty state
+                multiStateView.setState(State.EMPTY);
+                isLoading = false;
+                isFirstLoad = false;
+                return;
+            }
+
+            if (!newMessages.isEmpty()) {
+                List<Message> filtered = new ArrayList<>();
+                for (Message m : newMessages) {
+                    if (!loadedMessageIds.contains(m.getId())) {
+                        filtered.add(m);
+                        loadedMessageIds.add(m.getId());
+                    }
                 }
+                if (!filtered.isEmpty()) {
+                    filtered.sort((m1, m2) -> m1.getCreatedAt().compareTo(m2.getCreatedAt()));
+                    lastCreatedAt = filtered.get(0).getCreatedAt();
+                    messages.addAll(0, filtered);
+                    messageAdapter.notifyItemRangeInserted(0, filtered.size());
+                    layoutManager.scrollToPositionWithOffset(filtered.size(), 0);
+
+                    // Show content state
+                    multiStateView.setState(State.CONTENT);
+                } else if (messages.isEmpty()) {
+                    // No new messages and no existing messages - show empty
+                    multiStateView.setState(State.EMPTY);
+                }
+            } else if (messages.isEmpty()) {
+                // No new messages and no existing messages - show empty
+                multiStateView.setState(State.EMPTY);
             }
-            if (!filtered.isEmpty()) {
-                filtered.sort((m1, m2) -> m1.getCreatedAt().compareTo(m2.getCreatedAt()));
-                lastCreatedAt = filtered.get(0).getCreatedAt();
-                messages.addAll(0, filtered);
-                messageAdapter.notifyItemRangeInserted(0, filtered.size());
-                layoutManager.scrollToPositionWithOffset(filtered.size(), 0);
-            }
-        }
-        isLoading = false;
+
+            isLoading = false;
+            isFirstLoad = false;
+        });
     }
 
     private void handleMessageSent(Map<String, Message> response) {
-        inputMessage.setText("");
-        Message sentMessage = response.get("message");
-        messages.add(sentMessage);
-        loadedMessageIds.add(sentMessage.getId());
-        messageAdapter.notifyItemInserted(messages.size() - 1);
-        recyclerView.scrollToPosition(messages.size() - 1);
+        runOnUiThread(() -> {
+            inputMessage.setText("");
+            Message sentMessage = response.get("message");
+            if (sentMessage != null) {
+                messages.add(sentMessage);
+                loadedMessageIds.add(sentMessage.getId());
+                messageAdapter.notifyItemInserted(messages.size() - 1);
+                recyclerView.scrollToPosition(messages.size() - 1);
+
+                multiStateView.setState(State.CONTENT);
+
+            }
+        });
     }
 
     private void handleMessageDeleted(Map<String, String> response) {
@@ -209,6 +291,10 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
                 messages.remove(i);
                 loadedMessageIds.remove(deletedMsgId);
                 messageAdapter.notifyItemRemoved(i);
+
+                if (messages.isEmpty()) {
+                    runOnUiThread(() -> multiStateView.setState(State.EMPTY));
+                }
                 break;
             }
         }
@@ -233,7 +319,8 @@ public class ChatRoomActivity extends AppCompatActivity implements MessageAdapte
         runOnUiThread(() -> {
             StringBuilder indicator = new StringBuilder();
             for (Map.Entry<String, Boolean> entry : typingUsers.entrySet()) {
-                if (entry.getKey().equals(senderId) && entry.getValue()) {
+//                if ( entry.getValue()) {
+                if (!entry.getKey().equals(senderId) && entry.getValue()) {
                     indicator.append(entry.getKey()).append(" is typing...");
                 }
             }

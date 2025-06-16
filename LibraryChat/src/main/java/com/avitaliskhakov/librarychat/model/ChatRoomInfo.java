@@ -5,7 +5,7 @@ public class ChatRoomInfo {
     private String title;
     private String creator;
 
-    public ChatRoomInfo() {} // חובה לריקון עם Firebase / Retrofit
+    public ChatRoomInfo() {}
 
     public ChatRoomInfo(String id, String title) {
         this.id = id;

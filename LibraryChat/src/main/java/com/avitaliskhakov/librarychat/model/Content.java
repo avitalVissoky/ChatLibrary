@@ -4,7 +4,7 @@ public class Content implements Icontent{
 
     private String content;
     private Icontent.contentType contentType;
-    private String createdAt; //UTC String
+    private String createdAt;
 
     public Content() {
     }

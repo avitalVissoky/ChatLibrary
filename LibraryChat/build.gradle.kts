@@ -30,7 +30,7 @@ android {
 }
 
 group = "com.github.avitaliskhakov"
-version = "1.0.1"
+version = "1.0.2"
 
 dependencies {
 
@@ -45,6 +45,8 @@ dependencies {
 
     implementation (libs.glide)
     annotationProcessor(libs.compiler)
+
+    implementation("com.github.avitalVissoky:MultiStateViewX:1.0.0")
 
 }
 
